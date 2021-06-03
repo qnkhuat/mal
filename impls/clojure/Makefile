@@ -22,13 +22,8 @@ mal: mal.jar
 src/mal/%.clj: $(DEPS)
 	@true
 
-#src/mal/stepA_mal.cljc: $(DEPS)
-
 target/%.jar: src/mal/%.clj $(SRCS)
 	lein with-profile $(word 1,$(subst _, ,$*)) uberjar
-
-node_modules:
-	npm install
 
 clean:
 	rm -rf target/ mal.jar mal
