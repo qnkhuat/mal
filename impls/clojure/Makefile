@@ -1,7 +1,7 @@
-clojure_MODE ?= clj
-SOURCES_LISP = src/mal/env.cljc src/mal/core.cljc src/mal/stepA_mal.cljc
-SRCS =  src/mal/env.cljc src/mal/core.cljc
-SOURCES = $(SOURCES_LISP)
+clojure_MODE = clj
+SOURCES_LISP = src/mal/core.clj src/mal/step0_repl.clj
+SRCS = $(SOURCES_BASE) src/mal/core.clj
+SOURCES =  $(SOURCES_LISP)
 
 DEPS = $(if $(filter cljs,$(clojure_MODE)),node_modules,deps)
 
@@ -19,12 +19,12 @@ mal: mal.jar
 	cat <(echo -e '#!/bin/sh\nexec java -jar "$$0" "$$@"') mal.jar > $@
 	chmod +x mal
 
-src/mal/%.cljc: $(DEPS)
+src/mal/%.clj: $(DEPS)
 	@true
 
 #src/mal/stepA_mal.cljc: $(DEPS)
 
-target/%.jar: src/mal/%.cljc $(SRCS)
+target/%.jar: src/mal/%.clj $(SRCS)
 	lein with-profile $(word 1,$(subst _, ,$*)) uberjar
 
 node_modules:
