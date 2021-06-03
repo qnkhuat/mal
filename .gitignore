@@ -1,3 +1,8 @@
+# dev
+*.swo
+*.swp
+.DS_Store
+
 pom.xml
 pom.xml.asc
 *.jar
