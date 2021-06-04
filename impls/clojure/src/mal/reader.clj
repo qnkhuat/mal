@@ -1,20 +1,25 @@
 (ns mal.reader
   (:gen-class))
 
-(declare read_form read_list read_atom read_str tokenize)
+(declare read-form read-list read-atom read-str tokenize)
 
 (defn throw-str [s]
   (throw (Exception. s)))
 
 (defn inc-pos [a] (swap! a update-in [:pos] inc))
 
+(defn safe-inc-pos [a msg]
+      (if (< (:pos @a) (count (:tokens @a)))
+        (inc-pos a)
+        (throw-str msg)))
+
 (defn curr-token [a-tokens] (nth (:tokens @a-tokens) (:pos @a-tokens) nil))
 
 (defn next-token [a-tokens] (nth (:tokens @a-tokens) (inc (:pos @a-tokens)) nil))
 
 ; Call tokenize and create a new reader object
-(defn read_str [s] 
-  (read_form (tokenize s)))
+(defn read-str [s] 
+  (read-form (tokenize s)))
 
 ; Take a string strung return an array/list of all tokens
 (def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:[\\].|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`@,;]+)")
@@ -22,29 +27,36 @@
   (atom {:tokens (map second (re-seq tok-re s))
          :pos 0}))
 
-(defn read_form [a-tokens] 
-  (let [tok (curr-token a-tokens)
-        pos (:pos a-tokens)]
-    (if (= tok "(")
-          (read_list a-tokens)
-          (read_atom tok))))
 
-(defn read_list [a-tokens] 
+(defn read-list [a-tokens] 
   (loop [result []]
     (do 
-      (if (< (:pos @a-tokens) (count (:tokens @a-tokens)))
-        (inc-pos a-tokens)
-        (throw-str "Expected ), got EOF"))
+      (safe-inc-pos a-tokens "Expected ), got EOF")
       (if (= (curr-token a-tokens) ")")
         result
-        (recur (conj result (read_form a-tokens) ))))))
+        (recur (conj result (read-form a-tokens) ))))))
 
-(defn read_atom [tok] 
+(def quote-re #"['`~@]")
+(defn read-form [a-tokens] 
+  (let [tok (curr-token a-tokens)
+        pos (:pos a-tokens)]
+    (cond (= tok "(") (read-list a-tokens)
+          (re-matches quote-re tok) (do
+                                      (safe-inc-pos a-tokens "got EOF")
+                                      (list (read-atom tok) (read-form a-tokens)))
+          :else (read-atom tok)
+          )))
+
+(def symbol-re #"[-+/*]")
+(defn read-atom [tok] 
   (cond (= tok "true") true
         (= tok "false") false
         (= tok "nil") nil
+        (= tok "'") 'quote
+        (= tok "`") 'quasiquote
+        (= tok "~") 'unquote
         (= tok nil) nil
+        (re-matches symbol-re tok) (symbol tok)
         :else (read-string tok)
         ))
-
 

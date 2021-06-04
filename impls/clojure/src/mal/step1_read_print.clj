@@ -2,15 +2,15 @@
   (:require 
     [clojure.repl]
     [mal.reader :as reader]
-    [mal.printer :as printer])
+    [mal.printer :as printer]
+    :reload)
   (:gen-class))
 
-
-(defn READ [s] (reader/read_str s))
+(defn READ [s] (reader/read-str s))
 
 (defn EVAL [l] l)
 
-(defn PRINT [l] (println (printer/pr_str l)))
+(defn PRINT [l] (println (printer/pr-str l)))
 
 (defn rep [s] (PRINT (EVAL (READ s))))
 

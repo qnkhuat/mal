@@ -1,9 +1,12 @@
 (ns mal.printer)
 
-(declare pr_str)
+(declare pr-str)
 
-(defn pr_str [l] 
+(defn pr-str [l] 
   (cond 
-    (or (vector? l) (list? l)) (str "(" (clojure.string/join " " (map pr_str l)) ")")
+    (or (vector? l) (list? l)) (str "(" (clojure.string/join " " (map pr-str l)) ")")
+    (symbol? l) l
+    (number? l) l
+    (boolean? l) (str l)
     true (str "\"" l "\"")
   ))
