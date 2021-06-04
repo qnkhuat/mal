@@ -1,10 +1,6 @@
-(ns mal.reader
-  (:gen-class))
+(ns mal.reader)
 
 (declare read-form read-list read-atom read-str tokenize)
-
-(defn throw-str [s]
-  (throw (Exception. s)))
 
 (defn curr-token [a-tokens] (nth (:tokens @a-tokens) (:pos @a-tokens) nil))
 
@@ -15,7 +11,7 @@
 (defn safe-inc-pos [a msg]
   (if (next-token a)
     (inc-pos a)
-    (throw-str msg)))
+    (throw (Exception. msg))))
 
 ; Call tokenize and create a new reader object
 (defn read-str [s] 
@@ -64,6 +60,9 @@
     (cond (= tok "(") (read-list a-tokens)
           (= tok "[") (read-vector a-tokens)
           (= tok "{") (read-map a-tokens)
+          (= tok "\\") (do
+                         (safe-inc-pos a-tokens "got EOF")
+                         (read-atom (curr-token a-tokens)))
           (re-matches quote-re tok) (do
                                       (safe-inc-pos a-tokens "got EOF")
                                       (list (read-atom tok) (read-form a-tokens)))
@@ -78,10 +77,11 @@
         (= tok "'") 'quote
         (= tok "`") 'quasiquote
         (= tok "~") 'unquote
-        (= tok nil) nil
+        (= tok "@") 'deref
         (number? tok) tok
         (clojure.string/starts-with? tok ":") (symbol tok)
         (re-matches symbol-re tok) (symbol tok)
-        :else (read-string tok)
-        ))
+        (string? tok) (read-string tok)
+        ;:else (read-string tok)
 
+        ))
