@@ -2,6 +2,11 @@
 
 (declare pr-str)
 
+(defn escape [s]
+  (-> s (clojure.string/replace "\\" "\\\\")
+        (clojure.string/replace "\"" "\\\"")
+        (clojure.string/replace "\n" "\\n")))
+
 (defn pr-str [l] 
   (cond 
     (vector? l) (str "[" (clojure.string/join " " (map pr-str l)) "]")
@@ -10,6 +15,6 @@
     (or (symbol? l) (number? l) ) l
     (boolean? l) (str l)
     (nil? l) "nil"
-    (string? l) (str "\"" l "\"")
-    :else (throw (Exception . "Invalid data type"))
+    (string? l) (str "\"" (escape l) "\"")
+    :else (throw (Exception. (str "Invalid data type: " l)))
   ))

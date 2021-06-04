@@ -18,9 +18,9 @@
   (read-form (tokenize s)))
 
 ; Take a string strung return an array/list of all tokens
-(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:[\\].|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`@,;]+)")
+(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`,;]*)")
 (defn tokenize [s] 
-  (atom {:tokens (map second (re-seq tok-re s))
+  (atom {:tokens (filter #(not= "" %) (map second (re-seq tok-re s)))
          :pos 0}))
 
 (defn read-list [a-tokens] 
@@ -52,24 +52,34 @@
           (recur (assoc result k v)))))))
 
 
-(def quote-re #"['`~@]")
+(def quote-re #"['`~@]|~@")
 (defn read-form [a-tokens] 
   (let [tok (curr-token a-tokens)
-        pos (:pos a-tokens)
-        ]
+        pos (:pos a-tokens)]
     (cond (= tok "(") (read-list a-tokens)
           (= tok "[") (read-vector a-tokens)
           (= tok "{") (read-map a-tokens)
-          (= tok "\\") (do
-                         (safe-inc-pos a-tokens "got EOF")
-                         (read-atom (curr-token a-tokens)))
           (re-matches quote-re tok) (do
                                       (safe-inc-pos a-tokens "got EOF")
                                       (list (read-atom tok) (read-form a-tokens)))
+          (= tok "^") (do
+                        (safe-inc-pos a-tokens "got EOF")
+                        (let [m (read-form a-tokens)]
+                          (safe-inc-pos a-tokens "got EOF")
+                          (list (read-atom tok) (read-form a-tokens) m))
+                        )
           :else (read-atom tok)
           )))
 
-(def symbol-re #"[-+/*]")
+(defn unescape [s]
+  (-> s (clojure.string/replace "\\\\" "\u029e")
+      (clojure.string/replace "\\\"" "\"")
+      (clojure.string/replace "\\n" "\n")
+      (clojure.string/replace "\u029e" "\\")))
+
+(def badstr-re #"^\"")
+(def int-re #"^-?[0-9]+$")
+(def str-re #"^\"((?:[\\].|[^\\\"])*)\"$")
 (defn read-atom [tok] 
   (cond (= tok "true") true
         (= tok "false") false
@@ -78,10 +88,12 @@
         (= tok "`") 'quasiquote
         (= tok "~") 'unquote
         (= tok "@") 'deref
-        (number? tok) tok
-        (clojure.string/starts-with? tok ":") (symbol tok)
-        (re-matches symbol-re tok) (symbol tok)
-        (string? tok) (read-string tok)
-        ;:else (read-string tok)
-
+        (= tok "^") 'with-meta
+        (= tok "~@") 'splice-unquote
+        (clojure.string/starts-with? tok ":") (symbol tok) ; keyword 
+        (re-seq int-re tok) (read-string tok)
+        (re-seq str-re tok) (unescape (second (re-find str-re tok)))
+        (re-seq badstr-re tok) (throw (Exception. (str "expected '\"', got EOF")))
+        :else (symbol tok)
         ))
+
