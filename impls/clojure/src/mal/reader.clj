@@ -44,6 +44,18 @@
         (recur (conj result (read-form a-tokens) ))))))
 
 
+(defn read-map [a-tokens]
+  (loop [result {}]
+    (do 
+      (safe-inc-pos a-tokens "Expected }, got EOF")
+      (if (= (curr-token a-tokens) "}")
+        result
+        (let [k (read-form a-tokens)
+              _ (safe-inc-pos a-tokens "Expected }, got EOF") ; eat the value
+              v (read-form a-tokens)]
+          (recur (assoc result k v)))))))
+
+
 (def quote-re #"['`~@]")
 (defn read-form [a-tokens] 
   (let [tok (curr-token a-tokens)
@@ -51,6 +63,7 @@
         ]
     (cond (= tok "(") (read-list a-tokens)
           (= tok "[") (read-vector a-tokens)
+          (= tok "{") (read-map a-tokens)
           (re-matches quote-re tok) (do
                                       (safe-inc-pos a-tokens "got EOF")
                                       (list (read-atom tok) (read-form a-tokens)))
@@ -67,6 +80,7 @@
         (= tok "~") 'unquote
         (= tok nil) nil
         (number? tok) tok
+        (clojure.string/starts-with? tok ":") (symbol tok)
         (re-matches symbol-re tok) (symbol tok)
         :else (read-string tok)
         ))
