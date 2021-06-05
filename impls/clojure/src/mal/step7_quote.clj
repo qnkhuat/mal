@@ -6,6 +6,8 @@
     [mal.env :as env]
     [mal.core :as core]
     :reload)
+  (:use
+    [mal.util])
   (:gen-class))
 
 ; Eval
@@ -18,7 +20,7 @@
 (env/env-set repl-env '*ARGV* '())
 
 (defn eval-ast [ast env]
-  (cond 
+  (cond
     (symbol? ast) (let [sym (env/env-get env ast)]
                     (if (nil? sym)
                       (throw (Exception. (format "Symbol %s not found" ast)))
@@ -28,7 +30,8 @@
     (map? ast) (reduce-kv (fn [new-map k v] (assoc new-map k (EVAL v env))) {} ast)
     :else ast))
 
-(defn READ [s] (reader/read-str s))
+;(defn READ [s] (do (println "READ: " (reader/read-str s)) (reader/read-str s)))
+(defn READ [s]  (reader/read-str s))
 
 ; TODO have safe access to elements for def! and let*
 ; NOTE on TCO:
@@ -38,7 +41,26 @@
 ; memory. But I doubt the call of EVAl in step4 is stay in memory during execution.
 ; Need a better tool for analysis
 
-(def debug (atom {:v nil}))
+;(def debug (atom {:v nil}))
+
+(declare quasiquote)
+(defn starts_with [ast sym]
+  (and (seq? ast)
+       (= (first ast) sym)))
+(defn qq-iter [seq]
+  (if (empty? seq)
+    ()
+    (let [elt (first seq)
+          acc (qq-iter (rest seq))]
+      (if (starts_with elt 'splice-unquote)
+        (list 'concat (second elt)     acc)
+        (list 'cons   (quasiquote elt) acc)))))
+(defn quasiquote [ast]
+  (cond (starts_with ast 'unquote)    (second ast)
+        (seq? ast)                    (qq-iter ast)
+        (vector? ast)                 (list 'vec (qq-iter ast))
+        (or (symbol? ast) (map? ast)) (list 'quote ast)
+        :else                         ast))
 
 (defn EVAL [ast env] 
   (loop [ast ast 
@@ -49,29 +71,32 @@
         ast
         (let [[a0 a1 a2 a3] ast]
           (cond (= 'def! a0) (env/env-set env a1 (EVAL a2 env))
+                (= 'quote a0) a1
+                (= 'quasiquoteexpand a0) (quasiquote a1)
+                (= 'quasiquote a0) (recur (quasiquote a1) env)
                 (= 'do a0) (do
-                                       (doall (map (fn [x] (EVAL x env)) (drop-last (rest ast)))) ; Evaluate ast[1:-1]
-                                       (recur (last ast) env))
+                             (doall (map (fn [x] (EVAL x env)) (drop-last (rest ast)))) ; Evaluate ast[1:-1]
+                             (recur (last ast) env))
                 (= 'if a0) (if (EVAL a1 env)
-                                       (recur a2 env) ; TCO 
-                                       (recur a3 env)) ; TCO
+                             (recur a2 env) ; TCO 
+                             (recur a3 env)) ; TCO
                 (= 'fn* a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
-                                                   (EVAL a2 (env/env env a1 (apply list args))))
-                                                 {:expression a2
-                                                  :params a1
-                                                  :environment env})
+                                         (EVAL a2 (env/env env a1 (apply list args))))
+                                       {:expression a2
+                                        :params a1
+                                        :environment env})
                 (= 'let* a0) (let [let-env (env/env env)]
-                                         (do
-                                           (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
-                                           (recur a2 let-env) ; TCO
-                                          ))
+                               (do
+                                 (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
+                                 (recur a2 let-env) ; TCO
+                                 ))
                 :else (let [evaluated-list (eval-ast ast env)
                             f (first evaluated-list)
                             args (rest evaluated-list)
                             {:keys [expression params environment]} (meta f)]
                         (if expression
-                           (recur expression (env/env environment params args)) ; TCO
-                            (apply f args)
+                          (recur expression (env/env environment params args)) ; TCO
+                          (apply f args)
                           ))))))))
 
 

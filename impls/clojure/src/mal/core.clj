@@ -28,5 +28,8 @@
              'deref deref
              'read-string reader/read-str
              'slurp slurp
+             'cons cons
+             'concat concat
+             'vec vec
              })
 
