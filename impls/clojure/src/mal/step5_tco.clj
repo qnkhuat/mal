@@ -8,19 +8,6 @@
     :reload)
   (:gen-class))
 
-(defmacro condv
-  [& clauses]
-  (when clauses
-    (list
-      'if
-      (first clauses)
-      (if (next clauses)
-        `(do (println (str "condv " '~(first clauses)))
-             ~(second clauses))
-        (throw (IllegalArgumentException.
-                 "cond requires an even number of forms")))
-      (cons 'condv (next (next clauses))))))
-
 ; Eval
 (def repl-env (env/env))
 ; Add primitives function
@@ -37,11 +24,17 @@
     (list? ast)  (map #(EVAL % env) ast)
     (vector? ast) (vec (map #(EVAL % env) ast))
     (map? ast) (reduce-kv (fn [new-map k v] (assoc new-map k (EVAL v env))) {} ast)
-    :else ast ))
+    :else ast))
 
 (defn READ [s] (reader/read-str s))
 
 ; TODO have safe access to elements for def! and let*
+; NOTE on TCO:
+; I've ran some analysis but found not much of different between this version and the step4 versino
+; Even though this version show no stackoverflow when run a big recursive tail call
+; My weak hypothesis is using this version with loop, we don't init to call EVAL many times, hence locates less 
+; memory. But I doubt the call of EVAl in step4 is stay in memory during execution.
+; Need a better tool for analysis
 (defn EVAL [ast env] 
   (loop [ast ast 
          env env]
@@ -73,8 +66,8 @@
                             args (rest evaluated-list)
                             {:keys [expression params environment]} (meta f)]
                         (if expression
-                          (recur expression (env/env environment params args)) ; TCO
-                          (apply f args)
+                           (recur expression (env/env environment params args)) ; TCO
+                            (apply f args)
                           ))))
         ))
     ))

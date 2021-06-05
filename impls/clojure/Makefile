@@ -24,7 +24,6 @@ src/mal/%.clj: $(DEPS)
 	@true
 
 target/%.jar: src/mal/%.clj $(SRCS)
-	make clean
 	lein with-profile $(word 1,$(subst _, ,$*)) uberjar
 
 clean:

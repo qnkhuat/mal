@@ -49,7 +49,8 @@
                                          (EVAL a2 let-env)
                                          ))
               :else (let [evaluated-list (eval-ast ast env)]
-                      (apply (first evaluated-list) (rest evaluated-list))))))
+                        (apply (first evaluated-list) (rest evaluated-list))
+                        ))))
     (eval-ast ast env)
     ))
 
