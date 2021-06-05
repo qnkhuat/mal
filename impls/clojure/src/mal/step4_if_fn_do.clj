@@ -1,9 +1,10 @@
-(ns mal.step4-if-fn
+(ns mal.step4-if-fn-do
   (:require 
     [clojure.repl]
     [mal.reader :as reader]
     [mal.printer :as printer]
     [mal.env :as env]
+    [mal.core :as core]
     :reload)
   (:gen-class))
 
@@ -11,10 +12,7 @@
 (def repl-env (env/env-create))
 ; Add primitives function
 (doall (map (fn [[k v]] (env/env-set repl-env k v)) 
-            {(symbol '+) + 
-             (symbol '-) - 
-             (symbol '*) * 
-             (symbol '/) /}))
+            core/ns-core))
 
 (declare EVAL)
 (defn eval-ast [ast env]
@@ -36,6 +34,14 @@
     (if (empty? ast)
       ast
       (cond (= (symbol "def!") (first ast)) (env/env-set env (second ast) (EVAL (nth ast 2) env))
+            (= (symbol "do") (first ast)) (last (map (fn [x] (EVAL x env)) (rest ast)))
+            (= (symbol "if") (first ast)) (let [[_ predicate true-exp false-exp] ast]
+                                              (if (EVAL predicate env)
+                                                (EVAL true-exp env)
+                                                (EVAL false-exp env)))
+            (= (symbol "fn*") (first ast)) (fn [& xs] (let [fn-env (env/env-create env (second ast) (apply list xs))]
+                                                          (EVAL (nth ast 2) fn-env)
+                                                          ))
             (= (symbol "let*") (first ast)) (let [[ _ let-bind let-eval ] ast
                                                   let-env (env/env-create env)]
                                               (do
@@ -51,6 +57,8 @@
 
 (defn rep [s] (PRINT (EVAL (READ s) repl-env)))
 
+(rep "(def! not (fn* [a] (if a false true)))") ; Define not using mal itself
+
 (defn -main [] 
   (loop []
     (do
@@ -64,5 +72,4 @@
             (catch Throwable e (clojure.repl/pst e))))
         (recur)
         ))))
-
 
