@@ -37,10 +37,9 @@
       (let [[a0 a1 a2 a3] ast]
         (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
               (= (symbol "do") a0) (last (map (fn [x] (EVAL x env)) (rest ast)))
-              (= (symbol "if") a0) (let [[_ predicate true-ast false-ast] ast]
-                                     (if (EVAL predicate env)
-                                       (EVAL true-ast env)
-                                       (EVAL false-ast env)))
+              (= (symbol "if") a0) (if (EVAL a1 env)
+                                       (EVAL a2 env)
+                                       (EVAL a3 env))
               (= (symbol "fn*") a0) (fn [& args]
                                       (EVAL a2 (env/env env a1 (apply list args)))) ; This is where program recursively create env which might lead to stackoverflow
               (= (symbol "let*") a0) (let [let-env (env/env env)]

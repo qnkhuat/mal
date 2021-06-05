@@ -15,10 +15,10 @@
 
 
 ; Take a string strung return an array/list of all tokens
-;(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`,;]*)")
-(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:[\\].|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`@,;]+)")
+(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`,;]*)")
+;(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:[\\].|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`@,;]+)")
 (defn tokenize [s] 
-  (atom {:tokens (filter #(not= "" %) (map second (re-seq tok-re s)))
+  (atom {:tokens (filter #(not= \; (first %)) (map second (re-seq tok-re s)))
          :pos 0}))
 
 ; Call tokenize and create a new reader object
@@ -41,7 +41,6 @@
       (= tok "(") (apply list (read-seq a-tokens ")"))
       (= tok "[") (vec (read-seq a-tokens "]"))
       (= tok "{") (apply hash-map (read-seq a-tokens "}"))
-
       (re-matches quote-re tok) (do
                                   (safe-inc-pos a-tokens "got EOF")
                                   (list (read-atom tok) (read-form a-tokens)))
@@ -73,6 +72,7 @@
         (= tok "^") 'with-meta
         (= tok "~@") 'splice-unquote
         (clojure.string/starts-with? tok ":") (keyword (subs tok 1)) ; keyword 
+        (clojure.string/starts-with? tok ";") "" ; keyword 
         (re-seq int-re tok) (read-string tok)
         (re-seq str-re tok) (unescape (second (re-find str-re tok)))
         (re-seq badstr-re tok) (throw (Exception. (str "expected '\"', got EOF")))
@@ -81,4 +81,4 @@
 
 (def s "(+ 1 2 3 (+ 1 2))\n(+ 4 5 6)")
 
-(read-str s)
+(read-string s)

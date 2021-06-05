@@ -1,4 +1,4 @@
-(ns mal.step5-tco
+(ns mal.step6-file
   (:require 
     [clojure.repl]
     [mal.reader :as reader]
@@ -9,12 +9,14 @@
   (:gen-class))
 
 ; Eval
+(declare EVAL)
 (def repl-env (env/env))
 ; Add primitives function
 (doall (map (fn [[k v]] (env/env-set repl-env k v)) 
             core/ns-core))
+(env/env-set repl-env (symbol 'eval)  (fn [ast] (EVAL ast repl-env)))
+(env/env-set repl-env (symbol '*ARGV*) '())
 
-(declare EVAL)
 (defn eval-ast [ast env]
   (cond 
     (symbol? ast) (let [sym (env/env-get env ast)]
@@ -35,6 +37,9 @@
 ; My weak hypothesis is using this version with loop, we don't init to call EVAL many times, hence locates less 
 ; memory. But I doubt the call of EVAl in step4 is stay in memory during execution.
 ; Need a better tool for analysis
+
+(def debug (atom {:v nil}))
+
 (defn EVAL [ast env] 
   (loop [ast ast 
          env env]
@@ -45,11 +50,11 @@
         (let [[a0 a1 a2 a3] ast]
           (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
                 (= (symbol "do") a0) (do
-                                       (map (fn [x] (EVAL x env)) (drop-last 1 (rest ast))) ; Evaluate ast[1:-1]
+                                       (doall (map (fn [x] (EVAL x env)) (drop-last (rest ast)))) ; Evaluate ast[1:-1]
                                        (recur (last ast) env))
                 (= (symbol "if") a0) (if (EVAL a1 env)
-                                         (recur a2 env) ; TCO 
-                                         (recur a3 env)) ; TCO
+                                       (recur a2 env) ; TCO 
+                                       (recur a3 env)) ; TCO
                 (= (symbol "fn*") a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
                                                    (EVAL a2 (env/env env a1 (apply list args))))
                                                  {:expression a2
@@ -59,7 +64,7 @@
                                          (do
                                            (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
                                            (recur a2 let-env) ; TCO
-                                           ))
+                                          ))
                 :else (let [evaluated-list (eval-ast ast env)
                             f (first evaluated-list)
                             args (rest evaluated-list)
@@ -67,28 +72,31 @@
                         (if expression
                            (recur expression (env/env environment params args)) ; TCO
                             (apply f args)
-                          ))))
-        ))
-    ))
+                          ))))))))
 
 
-(defn PRINT [l] (println (printer/pr-str l)))
+(defn PRINT [o] (println (printer/pr-str o)))
 
-(defn rep [s] (PRINT (EVAL (READ s) repl-env)))
+(defn re [s] (EVAL (READ s) repl-env))
+(defn rep [s] (PRINT (re s)))
 
-(rep "(def! not (fn* [a] (if a false true)))") ; Define not using mal itself
+(re "(def! not (fn* [a] (if a false true)))") ; Define not using mal itself
+(re "(def! load-file (fn* [f] (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 
-(defn -main [] 
-  (loop []
-    (do
-      (print "user> ")
-      (flush)
-      (let [line (read-line)]
-        (if (nil? line)
-          (System/exit 0)
-          (try 
-            (rep line)
-            (catch Throwable e (clojure.repl/pst e))))
-        (recur)
-        ))))
+(defn -main [& args] 
+  (env/env-set repl-env (symbol '*ARGV*) (rest args))
+  (if args
+    (re (str "(load-file \"" (first args) "\")"))
+    (loop []
+      (do
+        (print "user> ")
+        (flush)
+        (let [line (read-line)]
+          (if (nil? line)
+            (System/exit 0)
+            (try 
+              (rep line)
+              (catch Throwable e (clojure.repl/pst e))))
+          (recur)
+          )))))
 
