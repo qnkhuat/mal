@@ -12,14 +12,14 @@
   [& clauses]
   (when clauses
     (list
-     'if
-     (first clauses)
-     (if (next clauses)
-       `(do (println (str "condv " '~(first clauses)))
-            ~(second clauses))
-       (throw (IllegalArgumentException.
-               "cond requires an even number of forms")))
-     (cons 'condv (next (next clauses))))))
+      'if
+      (first clauses)
+      (if (next clauses)
+        `(do (println (str "condv " '~(first clauses)))
+             ~(second clauses))
+        (throw (IllegalArgumentException.
+                 "cond requires an even number of forms")))
+      (cons 'condv (next (next clauses))))))
 
 ; Eval
 (def repl-env (env/env))
@@ -52,13 +52,10 @@
         (let [[a0 a1 a2 a3] ast]
           (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
                 (= (symbol "do") a0) (do
-                                       ;last (map (fn [x] (EVAL x env)) (rest ast))
                                        (map (fn [x] (EVAL x env)) (drop-last 1 (rest ast))) ; Evaluate ast[1:-1]
                                        (recur (last ast) env))
                 (= (symbol "if") a0) (let [[_ predicate true-ast false-ast] ast]
                                        (if (EVAL predicate env)
-                                         ;(EVAL true-exp env)
-                                         ;(EVAL false-exp env)))
                                          (recur true-ast env) ; TCO 
                                          (recur false-ast env))) ; TCO
                 (= (symbol "fn*") a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
@@ -69,7 +66,6 @@
                 (= (symbol "let*") a0) (let [let-env (env/env env)]
                                          (do
                                            (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
-                                           ;(EVAL let-ast let-env)
                                            (recur a2 let-env) ; TCO
                                            ))
                 :else (let [evaluated-list (eval-ast ast env)
@@ -77,8 +73,8 @@
                             args (rest evaluated-list)
                             {:keys [expression params environment]} (meta f)]
                         (if expression
-                           (recur expression (env/env environment params args))
-                            (apply f args)
+                          (recur expression (env/env environment params args)) ; TCO
+                          (apply f args)
                           ))))
         ))
     ))
