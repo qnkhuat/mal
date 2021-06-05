@@ -43,19 +43,19 @@
       (if (empty? ast)
         ast
         (let [[a0 a1 a2 a3] ast]
-          (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
-                (= (symbol "do") a0) (do
+          (cond (= 'def! a0) (env/env-set env a1 (EVAL a2 env))
+                (= 'do a0) (do
                                        (map (fn [x] (EVAL x env)) (drop-last 1 (rest ast))) ; Evaluate ast[1:-1]
                                        (recur (last ast) env))
-                (= (symbol "if") a0) (if (EVAL a1 env)
+                (= 'if a0) (if (EVAL a1 env)
                                          (recur a2 env) ; TCO 
                                          (recur a3 env)) ; TCO
-                (= (symbol "fn*") a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
+                (= 'fn* a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
                                                    (EVAL a2 (env/env env a1 (apply list args))))
                                                  {:expression a2
                                                   :params a1
                                                   :environment env})
-                (= (symbol "let*") a0) (let [let-env (env/env env)]
+                (= 'let* a0) (let [let-env (env/env env)]
                                          (do
                                            (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
                                            (recur a2 let-env) ; TCO
