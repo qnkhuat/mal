@@ -8,7 +8,7 @@
   (:gen-class))
 
 ; Eval
-(def repl-env (env/env-create))
+(def repl-env (env/env))
 ; Add primitives function
 (doall (map (fn [[k v]] (env/env-set repl-env k v)) 
             {(symbol '+) + 
@@ -37,7 +37,7 @@
       ast
       (cond (= (symbol "def!") (first ast)) (env/env-set env (second ast) (EVAL (nth ast 2) env))
             (= (symbol "let*") (first ast)) (let [[ _ let-bind let-eval ] ast
-                                                  let-env (env/env-create env)]
+                                                  let-env (env/env env)]
                                               (do
                                                 (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 let-bind)))
                                                 (EVAL let-eval let-env)))

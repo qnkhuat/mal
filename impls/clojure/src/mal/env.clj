@@ -24,11 +24,11 @@
     ))
 
 
-(defn env-create 
+(defn env
   ([] (atom { :outer nil :env {} }))
   ([outer] (atom { :outer outer :env {} }))
   ([outer binds exprs] 
-   (let [env (env-create outer)]
+   (let [env (env outer)]
      (do 
        (loop [b binds
               e exprs]
@@ -40,8 +40,4 @@
                    (recur (next b) (rest e))
                    )))
        env))))
-
-
-;(def e (env-create nil ['& 'more] [ 3 4 5 ]))
-
 

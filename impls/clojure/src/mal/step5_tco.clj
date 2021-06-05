@@ -9,7 +9,7 @@
   (:gen-class))
 
 ; Eval
-(def repl-env (env/env-create))
+(def repl-env (env/env))
 ; Add primitives function
 (doall (map (fn [[k v]] (env/env-set repl-env k v)) 
             core/ns-core))
@@ -28,28 +28,50 @@
 
 (defn READ [s] (reader/read-str s))
 
+
+(defn create-malFunc [ast params env fn]
+  ())
 ; TODO have safe access to elements for def! and let*
 (defn EVAL [ast env] 
-  (if (list? ast)
-    (if (empty? ast)
-      ast
-      (cond (= (symbol "def!") (first ast)) (env/env-set env (second ast) (EVAL (nth ast 2) env))
-            (= (symbol "do") (first ast)) (last (map (fn [x] (EVAL x env)) (rest ast)))
-            (= (symbol "if") (first ast)) (let [[_ predicate true-exp false-exp] ast]
-                                              (if (EVAL predicate env)
-                                                (EVAL true-exp env)
-                                                (EVAL false-exp env)))
-            (= (symbol "fn*") (first ast)) (fn [& xs] (let [fn-env (env/env-create env (second ast) (apply list xs))] ; This is where Tail call happens
-                                                          (EVAL (nth ast 2) fn-env)
-                                                          ))
-            (= (symbol "let*") (first ast)) (let [[ _ let-bind let-eval ] ast
-                                                  let-env (env/env-create env)]
-                                              (do
-                                                (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 let-bind)))
-                                                (EVAL let-eval let-env)))
-            :else (let [evaluated-list (eval-ast ast env)]
-                    (apply (first evaluated-list) (rest evaluated-list)))))
-    (eval-ast ast env)
+  (loop [ast ast 
+         env env]
+    (if (not (list? ast))
+      (eval-ast ast env)
+      (if (empty? ast)
+        ast
+        (let [[a0 a1 a2 a3] ast]
+          (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
+                (= (symbol "do") a0) (do
+                                       ;last (map (fn [x] (EVAL x env)) (rest ast))
+                                       (map (fn [x] (EVAL x env)) (drop-last 1 (rest ast))) ; Evaluate ast[1:-1]
+                                       (recur (last ast) env))
+                (= (symbol "if") a0) (let [[_ predicate true-ast false-ast] ast]
+                                       (if (EVAL predicate env)
+                                         ;(EVAL true-exp env)
+                                         ;(EVAL false-exp env)))
+                                         (recur true-ast env) ; TCO 
+                                         (recur false-ast env))) ; TCO
+                (= (symbol "fn*") a0) (with-meta (fn [& args] ; This is where program recursively create env which might lead to stackoverflow
+                                                   (EVAL a2 (env/env env a1 (apply list args))))
+                                                 {:expression a2
+                                                  :params a1
+                                                  :environment env})
+                (= (symbol "let*") a0) (let [let-env (env/env env)]
+                                         (do
+                                           (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
+                                           ;(EVAL let-ast let-env)
+                                           (recur a2 let-env) ; TCO
+                                           ))
+                :else (let [evaluated-list (eval-ast ast env)
+                            f (first evaluated-list)
+                            args (rest evaluated-list)
+                            {:keys [expression params environment]} (meta f)]
+                        (if (expression)
+                          (do
+                            (recur expression (env/env env params args)))
+                          (apply f args)
+                          ))))
+        ))
     ))
 
 
@@ -70,6 +92,6 @@
           (try 
             (rep line)
             (catch Throwable e (clojure.repl/pst e))))
-        ;(recur)
+        (recur)
         ))))
 

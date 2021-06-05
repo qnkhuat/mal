@@ -9,7 +9,7 @@
   (:gen-class))
 
 ; Eval
-(def repl-env (env/env-create))
+(def repl-env (env/env))
 ; Add primitives function
 (doall (map (fn [[k v]] (env/env-set repl-env k v)) 
             core/ns-core))
@@ -29,26 +29,27 @@
 (defn READ [s] (reader/read-str s))
 
 ; TODO have safe access to elements for def! and let*
-(defn EVAL [ast env]
+
+(defn EVAL [ast env] 
   (if (list? ast)
     (if (empty? ast)
       ast
-      (cond (= (symbol "def!") (first ast)) (env/env-set env (second ast) (EVAL (nth ast 2) env))
-            (= (symbol "do") (first ast)) (last (map (fn [x] (EVAL x env)) (rest ast)))
-            (= (symbol "if") (first ast)) (let [[_ predicate true-exp false-exp] ast]
-                                              (if (EVAL predicate env)
-                                                (EVAL true-exp env)
-                                                (EVAL false-exp env)))
-            (= (symbol "fn*") (first ast)) (fn [& xs] (let [fn-env (env/env-create env (second ast) (apply list xs))] ; This is where program recursively create env which might lead to stackoverflow
-                                                          (EVAL (nth ast 2) fn-env)
-                                                          ))
-            (= (symbol "let*") (first ast)) (let [[ _ let-bind let-eval ] ast
-                                                  let-env (env/env-create env)]
-                                              (do
-                                                (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 let-bind)))
-                                                (EVAL let-eval let-env)))
-            :else (let [evaluated-list (eval-ast ast env)]
-                    (apply (first evaluated-list) (rest evaluated-list)))))
+      (let [[a0 a1 a2 a3] ast]
+        (cond (= (symbol "def!") a0) (env/env-set env a1 (EVAL a2 env))
+              (= (symbol "do") a0) (last (map (fn [x] (EVAL x env)) (rest ast)))
+              (= (symbol "if") a0) (let [[_ predicate true-ast false-ast] ast]
+                                     (if (EVAL predicate env)
+                                       (EVAL true-ast env)
+                                       (EVAL false-ast env)))
+              (= (symbol "fn*") a0) (fn [& args]
+                                      (EVAL a2 (env/env env a1 (apply list args)))) ; This is where program recursively create env which might lead to stackoverflow
+              (= (symbol "let*") a0) (let [let-env (env/env env)]
+                                       (do
+                                         (doall (map (fn [[k v]] (env/env-set let-env k (EVAL v let-env))) (partition 2 a1)))
+                                         (EVAL a2 let-env)
+                                         ))
+              :else (let [evaluated-list (eval-ast ast env)]
+                      (apply (first evaluated-list) (rest evaluated-list))))))
     (eval-ast ast env)
     ))
 
