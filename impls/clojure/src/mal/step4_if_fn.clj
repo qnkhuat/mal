@@ -10,10 +10,11 @@
 ; Eval
 (def repl-env (env/env-create))
 ; Add primitives function
-(doall (map (fn [[k v]] (env/env-set repl-env k v)) {(symbol '+) + 
-                                              (symbol '-) - 
-                                              (symbol '*) * 
-                                              (symbol '/) /}))
+(doall (map (fn [[k v]] (env/env-set repl-env k v)) 
+            {(symbol '+) + 
+             (symbol '-) - 
+             (symbol '*) * 
+             (symbol '/) /}))
 
 (declare EVAL)
 (defn eval-ast [ast env]
@@ -45,7 +46,8 @@
     (eval-ast ast env)
     ))
 
-(defn PRINT [l] (println l))
+
+(defn PRINT [l] (println (printer/pr-str l)))
 
 (defn rep [s] (PRINT (EVAL (READ s) repl-env)))
 

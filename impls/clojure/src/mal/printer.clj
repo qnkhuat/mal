@@ -1,4 +1,6 @@
-(ns mal.printer)
+(ns mal.printer
+  (:use [clojure.test :only [function?]])
+  )
 
 (declare pr-str)
 
@@ -16,5 +18,6 @@
     (boolean? l) (str l)
     (nil? l) "nil"
     (string? l) (str "\"" (escape l) "\"")
+    (function? l) "#<function>"
     :else (throw (Exception. (str "Invalid data type: " l))))
   )

@@ -2,8 +2,12 @@
 
 (defn env-create 
   ([] (atom { :outer nil :env {} }))
-  ([outer] (atom { :outer outer :env {} })
-  ))
+  ([outer] (atom { :outer outer :env {} }))
+  ([outer binds exprs] 
+   (let [env (env-create outer)]
+     (doall (map (fn [k v] (env k v)) binds exprs))
+     env))
+  )
 
 (defn inc-pos [a] (swap! a update-in [:pos] inc))
 
@@ -25,6 +29,5 @@
     (if (nil? contained-env)
       (throw (Exception. (format "%s not found" k)))
       (get (:env @contained-env) k))
-    )
-  )
+    ))
 
