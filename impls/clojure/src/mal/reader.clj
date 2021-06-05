@@ -13,63 +13,45 @@
     (inc-pos a)
     (throw (Exception. msg))))
 
-; Call tokenize and create a new reader object
-(defn read-str [s] 
-  (read-form (tokenize s)))
 
 ; Take a string strung return an array/list of all tokens
-(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`,;]*)")
+;(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:\\.|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`,;]*)")
+(def tok-re #"[\s,]*(~@|[\[\]{}()'`~^@]|\"(?:[\\].|[^\\\"])*\"?|;.*|[^\s\[\]{}()'\"`@,;]+)")
 (defn tokenize [s] 
   (atom {:tokens (filter #(not= "" %) (map second (re-seq tok-re s)))
          :pos 0}))
 
-(defn read-list [a-tokens] 
-  (loop [result '()]
-    (do 
-      (safe-inc-pos a-tokens "Expected ), got EOF")
-      (if (= (curr-token a-tokens) ")")
-        (reverse result)
-        (recur (conj result (read-form a-tokens) ))))))
+; Call tokenize and create a new reader object
+(defn read-str [s] 
+  (read-form (tokenize s)))
 
-(defn read-vector [a-tokens] 
+(defn read-seq [a-tokens end]
   (loop [result []]
-    (do 
-      (safe-inc-pos a-tokens "Expected ], got EOF")
-      (if (= (curr-token a-tokens) "]")
+     (do 
+      (safe-inc-pos a-tokens (format "Expected %s, got EOF" end))
+      (if (= (curr-token a-tokens) end)
         result
         (recur (conj result (read-form a-tokens) ))))))
-
-
-(defn read-map [a-tokens]
-  (loop [result {}]
-    (do 
-      (safe-inc-pos a-tokens "Expected }, got EOF")
-      (if (= (curr-token a-tokens) "}")
-        result
-        (let [k (read-form a-tokens)
-              _ (safe-inc-pos a-tokens "Expected }, got EOF") ; eat the value
-              v (read-form a-tokens)]
-          (recur (assoc result k v)))))))
-
 
 (def quote-re #"['`~@]|~@")
 (defn read-form [a-tokens] 
   (let [tok (curr-token a-tokens)
         pos (:pos a-tokens)]
-    (cond (= tok "(") (read-list a-tokens)
-          (= tok "[") (read-vector a-tokens)
-          (= tok "{") (read-map a-tokens)
-          (re-matches quote-re tok) (do
-                                      (safe-inc-pos a-tokens "got EOF")
-                                      (list (read-atom tok) (read-form a-tokens)))
-          (= tok "^") (do
-                        (safe-inc-pos a-tokens "got EOF")
-                        (let [m (read-form a-tokens)]
-                          (safe-inc-pos a-tokens "got EOF")
-                          (list (read-atom tok) (read-form a-tokens) m))
-                        )
-          :else (read-atom tok)
-          )))
+    (cond 
+      (= tok "(") (apply list (read-seq a-tokens ")"))
+      (= tok "[") (vec (read-seq a-tokens "]"))
+      (= tok "{") (apply hash-map (read-seq a-tokens "}"))
+
+      (re-matches quote-re tok) (do
+                                  (safe-inc-pos a-tokens "got EOF")
+                                  (list (read-atom tok) (read-form a-tokens)))
+      (= tok "^") (do
+                    (safe-inc-pos a-tokens "got EOF")
+                    (let [m (read-form a-tokens)]
+                      (safe-inc-pos a-tokens "got EOF")
+                      (list (read-atom tok) (read-form a-tokens) m)))
+      :else (read-atom tok)
+      )))
 
 (defn unescape [s]
   (-> s (clojure.string/replace "\\\\" "\u029e")
@@ -97,3 +79,6 @@
         :else (symbol tok)
         ))
 
+(def s "(+ 1 2 3 (+ 1 2))\n(+ 4 5 6)")
+
+(read-str s)
