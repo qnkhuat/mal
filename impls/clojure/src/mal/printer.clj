@@ -14,7 +14,7 @@
     (vector? l) (str "[" (clojure.string/join " " (map #(pr-str % readably) l)) "]")
     (list? l) (str "(" (clojure.string/join " " (map #(pr-str % readably) l)) ")")
     (map? l) (str "{" (clojure.string/join " " (map (fn [[k v]] (str (#(pr-str % readably) k) " " (#(pr-str % readably) v))) l)) "}")
-    (or (symbol? l) (number? l) ) l
+    (or (symbol? l) (number? l) (keyword? l)) l
     (boolean? l) (str l)
     (nil? l) "nil"
     (string? l) (if readably (str "\"" (escape l) "\"") l)

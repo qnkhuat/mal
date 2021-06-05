@@ -27,7 +27,7 @@
 
 (defn READ [s] (reader/read-str s))
 
-(defn EVAL [ast, env] ast
+(defn EVAL [ast, env]
   (if (list? ast)
     (if (empty? ast)
       ast

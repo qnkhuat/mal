@@ -1,0 +1,4 @@
+(def! fact-iter (fn* (x acc) (if (= x 0) acc (fact-iter (- x 1) (* x acc)))))
+(def! fact (fn* (x) (fact-iter x 1)))
+
+(def! fact (fn* (x) (if (= x 1) 1 (* x (fact (- x 1))))))

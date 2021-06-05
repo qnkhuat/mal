@@ -29,7 +29,7 @@
 (defn READ [s] (reader/read-str s))
 
 ; TODO have safe access to elements for def! and let*
-(defn EVAL [ast env] ast
+(defn EVAL [ast env]
   (if (list? ast)
     (if (empty? ast)
       ast
@@ -39,7 +39,7 @@
                                               (if (EVAL predicate env)
                                                 (EVAL true-exp env)
                                                 (EVAL false-exp env)))
-            (= (symbol "fn*") (first ast)) (fn [& xs] (let [fn-env (env/env-create env (second ast) (apply list xs))]
+            (= (symbol "fn*") (first ast)) (fn [& xs] (let [fn-env (env/env-create env (second ast) (apply list xs))] ; This is where program recursively create env which might lead to stackoverflow
                                                           (EVAL (nth ast 2) fn-env)
                                                           ))
             (= (symbol "let*") (first ast)) (let [[ _ let-bind let-eval ] ast

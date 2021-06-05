@@ -90,7 +90,7 @@
         (= tok "@") 'deref
         (= tok "^") 'with-meta
         (= tok "~@") 'splice-unquote
-        (clojure.string/starts-with? tok ":") (keyword tok) ; keyword 
+        (clojure.string/starts-with? tok ":") (keyword (subs tok 1)) ; keyword 
         (re-seq int-re tok) (read-string tok)
         (re-seq str-re tok) (unescape (second (re-find str-re tok)))
         (re-seq badstr-re tok) (throw (Exception. (str "expected '\"', got EOF")))
