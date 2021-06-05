@@ -1,4 +1,4 @@
-(ns mal.step3-env
+(ns mal.step4-if-fn
   (:require 
     [clojure.repl]
     [mal.reader :as reader]

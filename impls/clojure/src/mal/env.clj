@@ -1,9 +1,8 @@
 (ns mal.env)
 
 (defn env-create 
-  ([] (atom { :outer nil :env {}}))
-  ([env] (atom { :outer nil :env env }))
-  ([env outer] (atom { :outer outer :env env })
+  ([] (atom { :outer nil :env {} }))
+  ([outer] (atom { :outer outer :env {} })
   ))
 
 (defn inc-pos [a] (swap! a update-in [:pos] inc))
@@ -28,3 +27,4 @@
       (get (:env @contained-env) k))
     )
   )
+
