@@ -8,6 +8,19 @@
     :reload)
   (:gen-class))
 
+(defmacro condv
+  [& clauses]
+  (when clauses
+    (list
+     'if
+     (first clauses)
+     (if (next clauses)
+       `(do (println (str "condv " '~(first clauses)))
+            ~(second clauses))
+       (throw (IllegalArgumentException.
+               "cond requires an even number of forms")))
+     (cons 'condv (next (next clauses))))))
+
 ; Eval
 (def repl-env (env/env))
 ; Add primitives function
@@ -28,14 +41,11 @@
 
 (defn READ [s] (reader/read-str s))
 
-
-(defn create-malFunc [ast params env fn]
-  ())
 ; TODO have safe access to elements for def! and let*
 (defn EVAL [ast env] 
   (loop [ast ast 
          env env]
-    (if (not (list? ast))
+    (if-not (list? ast)
       (eval-ast ast env)
       (if (empty? ast)
         ast
@@ -66,10 +76,9 @@
                             f (first evaluated-list)
                             args (rest evaluated-list)
                             {:keys [expression params environment]} (meta f)]
-                        (if (expression)
-                          (do
-                            (recur expression (env/env env params args)))
-                          (apply f args)
+                        (if expression
+                           (recur expression (env/env environment params args))
+                            (apply f args)
                           ))))
         ))
     ))
