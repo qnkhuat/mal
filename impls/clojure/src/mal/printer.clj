@@ -4,8 +4,8 @@
 
 (defn escape [s]
   (-> s (clojure.string/replace "\\" "\\\\")
-        (clojure.string/replace "\"" "\\\"")
-        (clojure.string/replace "\n" "\\n")))
+      (clojure.string/replace "\"" "\\\"")
+      (clojure.string/replace "\n" "\\n")))
 
 (defn pr-str [l] 
   (cond 
@@ -16,5 +16,5 @@
     (boolean? l) (str l)
     (nil? l) "nil"
     (string? l) (str "\"" (escape l) "\"")
-    :else (throw (Exception. (str "Invalid data type: " l)))
-  ))
+    :else (throw (Exception. (str "Invalid data type: " l))))
+  )
