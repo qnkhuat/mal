@@ -29,7 +29,11 @@
              'read-string reader/read-str
              'slurp slurp
              'cons cons
-             'concat concat
+             'concat #(apply list (apply concat %&))
              'vec vec
+             'nth nth
+             'first first
+             'rest rest
+             'last last
              })
 
