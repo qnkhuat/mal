@@ -4,6 +4,10 @@
     [mal.reader :as reader]
   ))
 
+
+(defn mal_throw [o]
+  (throw (ex-info "Exception" {:data o})))
+
 (def ns-core {'+ + 
              '- - 
              '* * 
@@ -35,5 +39,26 @@
              'first first
              'rest rest
              'last last
+             'throw mal_throw
+             'nil? nil?
+             'true? true?
+             'false? false?
+             'symbol symbol
+             'symbol? symbol?
+             'vector? vector? 
+             'vector vector
+             'keyword keyword
+             'keyword? keyword?
+             'hash-map hash-map
+             'map? map?
+             'assoc assoc
+             'dissoc dissoc
+             'get get
+             'contains? contains?
+             'keys (fn [hm] (let [ks (keys hm)] (if (nil? ks) '() ks)))
+             'vals (fn [hm] (let [vs (vals hm)] (if (nil? vs) '() vs)))
+             'sequential? sequential?
+             'apply apply
+             'map map
              })
 
